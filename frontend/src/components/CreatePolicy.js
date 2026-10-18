@@ -1,0 +1,631 @@
+import React, { useState, useEffect } from 'react';
+import { useWeb3 } from '../hooks/useWeb3.js';
+import { useApi } from '../hooks/useApi.js';
+import { ethers } from 'ethers';
+import { API_BASE_URL } from '../config.js';
+
+const CreatePolicy = () => {
+  const { account, isConnected, provider } = useWeb3();
+  const [products, setProducts] = useState([]);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [formData, setFormData] = useState({
+    productId: '',
+    duration: '14',
+    threshold: '50',
+    location: ''
+  });
+  const [pricing, setPricing] = useState(null);
+  const [creatingPolicy, setCreatingPolicy] = useState(false);
+  const [creatingTestPolicy, setCreatingTestPolicy] = useState(false);
+  const [locations, setLocations] = useState([]);
+  const [locationRecommendations, setLocationRecommendations] = useState(null);
+  const [showRecommendations, setShowRecommendations] = useState(false);
+  const [advancedMode, setAdvancedMode] = useState(false);
+
+  const apiBaseUrl = API_BASE_URL;
+
+  const triggerExpireSweep = async () => {
+    try {
+      await fetch(`${apiBaseUrl}/api/policies/expire-due`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+    } catch (err) {
+      console.warn('Expire sweep failed:', err?.message || err);
+    }
+  };
+
+  const getChainTimestamp = async () => {
+    if (provider) {
+      try {
+        const block = await provider.getBlock('latest');
+        if (block?.timestamp) {
+          return Number(block.timestamp);
+        }
+      } catch (err) {
+        console.warn('Failed to read latest block timestamp:', err?.message || err);
+      }
+    }
+    return Math.floor(Date.now() / 1000);
+  };
+
+  const fetchProducts = async () => {
+    try {
+      // Load products
+      const productsRes = await fetch(`${apiBaseUrl}/api/products`);
+      if (productsRes.ok) {
+        const productsData = await productsRes.json();
+        setProducts(productsData.products || []);
+        if (productsData.products && productsData.products.length > 0) {
+          const firstProduct = productsData.products[0];
+          setSelectedProduct(firstProduct);
+          setFormData(prev => ({ 
+            ...prev,
+            productId: firstProduct.id.toString(), 
+            duration: firstProduct.minDurationDays.toString(),
+            threshold: Math.floor((firstProduct.minThreshold + firstProduct.maxThreshold) / 2).toString()
+          }));
+        }
+      }
+
+      // Load locations
+      const locationsRes = await fetch(`${apiBaseUrl}/api/policies/locations/all`);
+      if (locationsRes.ok) {
+        const locationsData = await locationsRes.json();
+        setLocations(locationsData.regions || []);
+      }
+    } catch (err) {
+      console.error('Error loading data:', err);
+    }
+  };
+
+  // Load products and locations
+  useEffect(() => {
+    fetchProducts();
+  }, []);
+
+  // Calculate pricing when form changes
+  useEffect(() => {
+    if (formData.productId && formData.duration) {
+      fetch(`${apiBaseUrl}/api/policies/price`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          productId: parseInt(formData.productId),
+          durationDays: parseInt(formData.duration)
+        })
+      })
+        .then(res => {
+          if (!res.ok) {
+            const errorText = res.status === 429 ? 'Rate limit exceeded. Please wait a moment and try again.' : `HTTP ${res.status}`;
+            throw new Error(errorText);
+          }
+          return res.json();
+        })
+        .then(data => setPricing(data))
+        .catch(err => {
+          console.error('Error calculating price:', err);
+          // Don't show alert for every failed price calculation to avoid spam
+        });
+    }
+  }, [formData.productId, formData.duration]);
+
+  // Fetch location recommendations when location or duration changes
+  useEffect(() => {
+    if (formData.location && formData.duration) {
+      fetch(`${apiBaseUrl}/api/policies/locations/${formData.location}/recommendations?durationDays=${formData.duration}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            setLocationRecommendations(data);
+          }
+        })
+        .catch(err => console.error('Error fetching recommendations:', err));
+    } else {
+      setLocationRecommendations(null);
+    }
+  }, [formData.location, formData.duration]);
+
+  // Automatically set threshold to ideal value when both recommendations and product are available
+  useEffect(() => {
+    if (locationRecommendations && locationRecommendations.recommendations && locationRecommendations.recommendations.ideal && selectedProduct) {
+      const idealThreshold = locationRecommendations.recommendations.ideal;
+      const minThreshold = selectedProduct.minThreshold || 1;
+      const maxThreshold = selectedProduct.maxThreshold || 100;
+      
+      // Clamp ideal threshold to product's valid range
+      const clampedThreshold = Math.max(minThreshold, Math.min(maxThreshold, idealThreshold));
+      
+      // Only update if current threshold is not already the clamped ideal (to avoid unnecessary updates)
+      const currentThreshold = parseInt(formData.threshold) || 0;
+      if (currentThreshold !== clampedThreshold) {
+        setFormData(prev => ({ ...prev, threshold: clampedThreshold.toString() }));
+        
+        // Show info message if ideal was outside valid range
+        if (idealThreshold < minThreshold || idealThreshold > maxThreshold) {
+          console.log(
+            `Note: Ideal threshold (${idealThreshold}mm) adjusted to ${clampedThreshold}mm to match product range (${minThreshold}-${maxThreshold}mm)`
+          );
+        } else {
+          console.log(`✓ Threshold automatically set to ideal value: ${clampedThreshold}mm`);
+        }
+      }
+    }
+  }, [locationRecommendations, selectedProduct]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!isConnected || !provider) {
+      alert('Please connect your wallet first');
+      return;
+    }
+
+    if (!selectedProduct) {
+      alert('Please select a product');
+      return;
+    }
+
+    if (!pricing) {
+      alert('Please wait for pricing to be calculated');
+      return;
+    }
+
+    // Validate and auto-correct threshold to ideal value if invalid
+    let threshold = parseInt(formData.threshold);
+    if (threshold < selectedProduct.minThreshold || threshold > selectedProduct.maxThreshold) {
+      // Try to use ideal threshold if available
+      if (locationRecommendations && locationRecommendations.recommendations && locationRecommendations.recommendations.ideal) {
+        const idealThreshold = locationRecommendations.recommendations.ideal;
+        const clampedIdeal = Math.max(selectedProduct.minThreshold, Math.min(selectedProduct.maxThreshold, idealThreshold));
+        
+        // Auto-correct to ideal threshold and continue
+        threshold = clampedIdeal;
+        setFormData(prev => ({ ...prev, threshold: clampedIdeal.toString() }));
+        
+        // Show info message (non-blocking)
+        if (idealThreshold !== clampedIdeal) {
+          console.log(
+            `Threshold adjusted: The ideal threshold (${idealThreshold}mm) for your location has been adjusted to ${clampedIdeal}mm to match this product's allowed range (${selectedProduct.minThreshold}-${selectedProduct.maxThreshold}mm).`
+          );
+        } else {
+          console.log(`Using ideal threshold of ${clampedIdeal}mm for your location.`);
+        }
+        // Continue with corrected threshold
+      } else {
+        // No ideal threshold available, show error
+        let errorMsg = `Invalid threshold: ${threshold}mm. ` +
+          `This product only accepts thresholds between ${selectedProduct.minThreshold}mm and ${selectedProduct.maxThreshold}mm. ` +
+          `Please adjust your threshold or select a different product.`;
+        alert(errorMsg);
+        return;
+      }
+    }
+
+    setCreatingPolicy(true);
+    try {
+      // Get contract ABI and address (use local deployment address - get from backend)
+      const contractsResponse = await fetch(`${apiBaseUrl}/api/contracts/addresses`);
+      const contracts = await contractsResponse.json();
+      const policyFactoryAddress = contracts.PolicyFactory;
+      
+      // Simple ABI for createPolicy and hasActivePolicy functions
+      const policyFactoryAbi = [
+        "function createPolicy(uint256 productId, uint64 durationDays, uint64 threshold) payable returns (uint256)",
+        "function hasActivePolicy(address holder) view returns (bool)"
+      ];
+      
+      const signer = await provider.getSigner();
+      const policyFactory = new ethers.Contract(policyFactoryAddress, policyFactoryAbi, signer);
+
+    await triggerExpireSweep();
+
+    const durationDays = parseInt(formData.duration);
+    // threshold is already validated and corrected above
+    
+    // Convert premium to wei - handle 0 premium correctly
+    let premiumWei;
+    const premiumValue = pricing.premiumFormatted || (pricing.premium ? pricing.premium.toString() : "0");
+    if (!premiumValue || premiumValue === "0.0" || premiumValue === "0" || parseFloat(premiumValue) === 0) {
+      premiumWei = "0"; // Truly free - no ETH needed
+    } else {
+      premiumWei = ethers.parseEther(premiumValue);
+    }
+    
+    await policyFactory.createPolicy.staticCall(
+      parseInt(formData.productId),
+      durationDays,
+      threshold,
+      { value: premiumWei }
+    );
+
+    const tx = await policyFactory.createPolicy(
+      parseInt(formData.productId),
+      durationDays,
+      threshold,
+      { value: premiumWei }
+    );
+
+    console.log('Creating policy with:', {
+      productId: parseInt(formData.productId),
+      durationDays,
+      threshold,
+      premiumWei: premiumWei.toString(),
+      premiumFormatted: premiumValue
+    });
+    
+    const receipt = await tx.wait();
+    console.log('Policy created:', receipt);
+    
+    // Wait a moment for blockchain state to update
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    // Dispatch event to notify MyPolicies to refresh
+    window.dispatchEvent(new CustomEvent('policyCreated', { detail: { policyId: receipt.logs?.[0]?.topics?.[3] } }));
+    
+    alert(`Policy created successfully! Transaction: ${receipt.hash}\n\nYou can now view your policy in "My Policies" page.`);
+    
+    // Don't auto-redirect - let user manually navigate to avoid interrupting the flow
+    
+    // Reset form to default values
+    const defaultDuration = selectedProduct?.minDurationDays?.toString() || '14';
+    const defaultThreshold = selectedProduct 
+      ? Math.floor((selectedProduct.minThreshold + selectedProduct.maxThreshold) / 2).toString()
+      : '50';
+    setFormData({ 
+      productId: formData.productId, 
+      duration: defaultDuration, 
+      threshold: defaultThreshold 
+    });
+    setPricing(null);
+  } catch (error) {
+    console.error('Error creating policy:', error);
+    console.error('Full error details:', {
+      message: error.message,
+      code: error.code,
+      data: error.data,
+      reason: error.reason,
+      error: error
+    });
+    
+    // More detailed error message
+    let errorMsg = 'Error creating policy: ' + error.message;
+    if (error.reason) {
+      errorMsg += '\nReason: ' + error.reason;
+    }
+    if (error.code === 'ACTION_REJECTED') {
+      errorMsg = 'Transaction was rejected. Please approve the transaction in MetaMask.';
+    }
+    
+    alert(errorMsg);
+  } finally {
+    setCreatingPolicy(false);
+  }
+};
+
+  const handleCreateTestPolicy = async () => {
+    if (!isConnected || !provider) {
+      alert('Please connect your wallet first');
+      return;
+    }
+
+    if (!selectedProduct) {
+      alert('Please select a product');
+      return;
+    }
+
+    if (!pricing) {
+      alert('Please wait for pricing to be calculated');
+      return;
+    }
+
+    // Validate and auto-correct threshold to ideal value if invalid
+    let threshold = parseInt(formData.threshold);
+    if (threshold < selectedProduct.minThreshold || threshold > selectedProduct.maxThreshold) {
+      // Try to use ideal threshold if available
+      if (locationRecommendations && locationRecommendations.recommendations && locationRecommendations.recommendations.ideal) {
+        const idealThreshold = locationRecommendations.recommendations.ideal;
+        const clampedIdeal = Math.max(selectedProduct.minThreshold, Math.min(selectedProduct.maxThreshold, idealThreshold));
+        
+        // Auto-correct to ideal threshold and continue
+        threshold = clampedIdeal;
+        setFormData(prev => ({ ...prev, threshold: clampedIdeal.toString() }));
+        
+        // Show info message (non-blocking)
+        if (idealThreshold !== clampedIdeal) {
+          console.log(
+            `Threshold adjusted: The ideal threshold (${idealThreshold}mm) for your location has been adjusted to ${clampedIdeal}mm to match this product's allowed range (${selectedProduct.minThreshold}-${selectedProduct.maxThreshold}mm).`
+          );
+        } else {
+          console.log(`Using ideal threshold of ${clampedIdeal}mm for your location.`);
+        }
+        // Continue with corrected threshold
+      } else {
+        // No ideal threshold available, show error
+        let errorMsg = `Invalid threshold: ${threshold}mm. ` +
+          `This product only accepts thresholds between ${selectedProduct.minThreshold}mm and ${selectedProduct.maxThreshold}mm. ` +
+          `Please adjust your threshold or select a different product.`;
+        alert(errorMsg);
+        return;
+      }
+    }
+
+    setCreatingTestPolicy(true);
+    try {
+      const contractsResponse = await fetch(`${apiBaseUrl}/api/contracts/addresses`);
+      const contracts = await contractsResponse.json();
+      const policyFactoryAddress = contracts.PolicyFactory;
+
+      const policyFactoryAbi = [
+        "function createTestPolicy(uint256 productId, uint64 durationSeconds, uint64 threshold) payable returns (uint256)",
+        "function hasActivePolicy(address holder) view returns (bool)"
+      ];
+
+      const signer = await provider.getSigner();
+      const policyFactory = new ethers.Contract(policyFactoryAddress, policyFactoryAbi, signer);
+
+    await triggerExpireSweep();
+
+    // threshold is already validated and corrected above
+
+    const premiumValue = pricing.premiumFormatted || (pricing.premium ? pricing.premium.toString() : "0");
+    const premiumWei = (!premiumValue || premiumValue === "0.0" || premiumValue === "0" || parseFloat(premiumValue) === 0)
+      ? "0"
+      : ethers.parseEther(premiumValue);
+
+    await policyFactory.createTestPolicy.staticCall(
+      parseInt(formData.productId),
+      60,
+      threshold,
+      { value: premiumWei }
+    );
+
+    const tx = await policyFactory.createTestPolicy(
+      parseInt(formData.productId),
+      60,
+      threshold,
+      { value: premiumWei }
+    );
+
+    const receipt = await tx.wait();
+    console.log('60s test policy created:', receipt);
+
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    window.dispatchEvent(new CustomEvent('policyCreated', { detail: { policyId: receipt.logs?.[0]?.topics?.[3] } }));
+
+    alert(`60-second test policy created! Transaction: ${receipt.hash}\n\nThe policy will start in a few seconds and expire one minute later.`);
+  } catch (error) {
+    console.error('Error creating test policy:', error);
+    alert('Failed to create 60-second policy: ' + (error?.message || 'Unknown error'));
+  } finally {
+    setCreatingTestPolicy(false);
+  }
+};
+
+  return (
+    <div className="create-policy">
+      <h2>🌱 Create New Insurance Policy</h2>
+      
+      {!isConnected ? (
+        <div className="connect-prompt">
+          <p>Please connect your MetaMask wallet to create a policy.</p>
+        </div>
+      ) : (
+        <>
+        <form onSubmit={handleSubmit} className="policy-form">
+          <div className="form-group">
+            <label htmlFor="product">Insurance Product</label>
+            <select
+              id="product"
+              value={formData.productId}
+              onChange={(e) => {
+                const product = products.find(p => p.id.toString() === e.target.value);
+                setSelectedProduct(product);
+                if (product) {
+                  setFormData(prev => {
+                    // Prefer ideal threshold from location recommendations if available
+                    let newThreshold;
+                    if (locationRecommendations && locationRecommendations.recommendations && locationRecommendations.recommendations.ideal) {
+                      const idealThreshold = locationRecommendations.recommendations.ideal;
+                      // Clamp ideal threshold to product's valid range
+                      newThreshold = Math.max(product.minThreshold, Math.min(product.maxThreshold, idealThreshold));
+                    } else {
+                      // If no recommendations, use current threshold if valid, otherwise use minimum
+                      const currentThreshold = parseInt(prev.threshold) || product.minThreshold;
+                      newThreshold = (currentThreshold < product.minThreshold || currentThreshold > product.maxThreshold)
+                        ? product.minThreshold
+                        : currentThreshold;
+                    }
+                    
+                    return {
+                    productId: e.target.value,
+                    duration: prev.duration,
+                      threshold: newThreshold.toString()
+                    };
+                  });
+                }
+              }}
+              required
+            >
+              {products.map(product => (
+                <option key={product.id} value={product.id}>
+                  {product.name} {product.basePremiumWei === "0" ? "(FREE)" : ""}
+                </option>
+              ))}
+            </select>
+            {selectedProduct && (
+              <small>
+                Duration: {selectedProduct.minDurationDays}-{selectedProduct.maxDurationDays} days
+                • Threshold: {selectedProduct.minThreshold}-{selectedProduct.maxThreshold} mm
+              </small>
+            )}
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="location">📍 Your Region</label>
+            <select
+              id="location"
+              value={formData.location}
+              onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
+            >
+              <option value="">Select your region...</option>
+              {locations.map(location => (
+                <option key={location.id} value={location.id}>
+                  {location.name}
+                </option>
+              ))}
+            </select>
+            <small>Select your region to get AI-powered threshold recommendations</small>
+          </div>
+
+          {locationRecommendations && (
+            <div className="form-group" style={{ background: '#f0f7ff', padding: '15px', borderRadius: '8px', marginTop: '10px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                <strong style={{ color: '#1976d2' }}>🎯 Recommended Thresholds</strong>
+                <button 
+                  type="button" 
+                  onClick={() => setShowRecommendations(!showRecommendations)}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#1976d2' }}
+                >
+                  {showRecommendations ? '▼' : '▶'}
+                </button>
+              </div>
+              {showRecommendations && (
+                <div style={{ marginTop: '10px' }}>
+                  <div style={{ marginBottom: '8px' }}>
+                    <strong>Ideal:</strong> {locationRecommendations.recommendations.ideal}mm
+                    <br />
+                    <small style={{ color: '#666' }}>{locationRecommendations.explanation.ideal}</small>
+                  </div>
+                  <div style={{ marginBottom: '8px' }}>
+                    <strong>Conservative:</strong> {locationRecommendations.recommendations.conservative}mm
+                    <br />
+                    <small style={{ color: '#666' }}>{locationRecommendations.explanation.conservative}</small>
+                  </div>
+                  <div>
+                    <strong>Aggressive:</strong> {locationRecommendations.recommendations.aggressive}mm
+                    <br />
+                    <small style={{ color: '#666' }}>{locationRecommendations.explanation.aggressive}</small>
+                  </div>
+                  <div style={{ marginTop: '10px', padding: '8px', background: '#fff', borderRadius: '4px' }}>
+                    <strong>Risk Level:</strong> {locationRecommendations.analysis.riskLevel} | 
+                    <strong> Confidence:</strong> {locationRecommendations.analysis.confidence}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="form-group">
+            <label htmlFor="threshold">Rainfall Threshold (mm)</label>
+            <input
+              type="number"
+              id="threshold"
+              step="1"
+              min={selectedProduct?.minThreshold || 1}
+              max={selectedProduct?.maxThreshold || 100}
+              value={formData.threshold}
+              onChange={(e) => setFormData(prev => ({ ...prev, threshold: e.target.value }))}
+              required
+            />
+            <small>Payout triggered if cumulative rainfall falls below this threshold</small>
+            {locationRecommendations && (
+              <div style={{ marginTop: '5px' }}>
+                <button 
+                  type="button"
+                  onClick={() => {
+                    const idealThreshold = locationRecommendations.recommendations.ideal;
+                    const minThreshold = selectedProduct?.minThreshold || 1;
+                    const maxThreshold = selectedProduct?.maxThreshold || 100;
+                    
+                    // Clamp ideal threshold to product's valid range
+                    const clampedThreshold = Math.max(minThreshold, Math.min(maxThreshold, idealThreshold));
+                    
+                    setFormData(prev => ({ ...prev, threshold: clampedThreshold.toString() }));
+                    
+                    // Show warning if ideal was outside valid range
+                    if (idealThreshold < minThreshold || idealThreshold > maxThreshold) {
+                      alert(
+                        `Note: The ideal threshold (${idealThreshold}mm) is outside this product's valid range (${minThreshold}-${maxThreshold}mm). ` +
+                        `The threshold has been adjusted to ${clampedThreshold}mm to match the product constraints.`
+                      );
+                    }
+                  }}
+                  style={{ 
+                    background: '#4CAF50', 
+                    color: 'white', 
+                    border: 'none', 
+                    padding: '5px 10px', 
+                    borderRadius: '4px', 
+                    cursor: 'pointer',
+                    fontSize: '12px'
+                  }}
+                >
+                  Use Ideal ({locationRecommendations.recommendations.ideal}mm)
+                </button>
+                {selectedProduct && (
+                  (locationRecommendations.recommendations.ideal < selectedProduct.minThreshold || 
+                   locationRecommendations.recommendations.ideal > selectedProduct.maxThreshold) && (
+                    <div style={{ marginTop: '5px', color: '#ff9800', fontSize: '11px' }}>
+                      ⚠️ Ideal threshold ({locationRecommendations.recommendations.ideal}mm) is outside product range ({selectedProduct.minThreshold}-{selectedProduct.maxThreshold}mm). Will be adjusted.
+                    </div>
+                  )
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="duration">Policy Duration (days)</label>
+            <select
+              id="duration"
+              value={formData.duration}
+              onChange={(e) => setFormData(prev => ({ ...prev, duration: e.target.value }))}
+            >
+              {selectedProduct && Array.from({length: selectedProduct.maxDurationDays - selectedProduct.minDurationDays + 1}, (_, i) => {
+                const days = selectedProduct.minDurationDays + i;
+                return <option key={days} value={days}>{days} days</option>;
+              })}
+            </select>
+          </div>
+
+          <div className="form-summary">
+            <h3>Policy Summary</h3>
+            <div className="summary-item">
+              <span>Premium:</span>
+              <span>{pricing ? pricing.premiumFormatted : '0'} ETH</span>
+            </div>
+            <div className="summary-item">
+              <span>Payout:</span>
+              <span>{pricing ? pricing.payoutFormatted : '0'} ETH</span>
+            </div>
+            <div className="summary-item">
+              <span>Duration:</span>
+              <span>{formData.duration} days</span>
+            </div>
+            <div className="summary-item">
+              <span>Threshold:</span>
+              <span>{formData.threshold} mm</span>
+            </div>
+          </div>
+
+          <button type="submit" disabled={creatingPolicy || !pricing} className="submit-btn">
+            {creatingPolicy ? 'Creating Policy...' : (pricing && parseFloat(pricing.premiumFormatted) === 0) ? 'Create Free Policy (Gas Only)' : 'Pay Premium & Create Policy'}
+          </button>
+          <button
+            type="button"
+            disabled={creatingTestPolicy || creatingPolicy || !pricing}
+            className="submit-btn"
+            style={{ marginTop: '10px', background: '#2196F3' }}
+            onClick={handleCreateTestPolicy}
+          >
+            {creatingTestPolicy ? 'Creating 60s Policy...' : 'Create 60s Test Policy'}
+          </button>
+        </form>
+        </>
+      )}
+    </div>
+  );
+};
+
+export default CreatePolicy;
