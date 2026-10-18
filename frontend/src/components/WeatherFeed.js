@@ -65,14 +65,12 @@ const WeatherFeed = () => {
     } catch (err) {
       console.warn('Weather feed notice:', err.message || err);
       // Retain default sample gracefully
-      if (!latestSample) {
-        setLatestSample(DEFAULT_WEATHER_SAMPLE);
-        setHistoryRounds(DEFAULT_HISTORY);
-      }
+      setLatestSample(prev => prev || DEFAULT_WEATHER_SAMPLE);
+      setHistoryRounds(prev => (prev && prev.length) ? prev : DEFAULT_HISTORY);
     } finally {
       setLoading(false);
     }
-  }, [latestSample]);
+  }, []);
 
   useEffect(() => {
     isMounted.current = true;

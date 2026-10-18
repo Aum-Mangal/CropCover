@@ -205,6 +205,13 @@ class DatasetWeatherService {
       return null;
     }
 
+    const now = Date.now();
+    // Throttle advancement: keep the current weather reading stable for 10 seconds
+    if (this._lastSequentialSample && (now - (this._lastSampleTime || 0)) < 10000) {
+      return this._lastSequentialSample;
+    }
+    this._lastSampleTime = now;
+
     if (this._sequentialIndex >= rows.length) {
       this._sequentialIndex = 0;
     }
