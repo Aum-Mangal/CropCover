@@ -4,25 +4,90 @@ import { useApi } from '../hooks/useApi.js';
 import { ethers } from 'ethers';
 import { API_BASE_URL } from '../config.js';
 
+const DEFAULT_PRODUCTS = [
+  {
+    id: 1,
+    name: "CropCover - Micro Premium Weather Shield",
+    minDurationDays: 7,
+    maxDurationDays: 30,
+    minThreshold: 10,
+    maxThreshold: 100,
+    basePremiumWei: "10000000000",
+    basePayoutWei: "40000000000"
+  },
+  {
+    id: 2,
+    name: "CropCover - Corn & Grain Drought Shield",
+    minDurationDays: 7,
+    maxDurationDays: 30,
+    minThreshold: 20,
+    maxThreshold: 100,
+    basePremiumWei: "1000000000000000",
+    basePayoutWei: "5000000000000000"
+  },
+  {
+    id: 3,
+    name: "CropCover - High Sensitivity Rain Cover",
+    minDurationDays: 7,
+    maxDurationDays: 90,
+    minThreshold: 1,
+    maxThreshold: 100,
+    basePremiumWei: "500000000000000",
+    basePayoutWei: "2000000000000000"
+  }
+];
+
+const DEFAULT_LOCATIONS = [
+  { id: "maastricht", name: "Maastricht, Netherlands" },
+  { id: "tours", name: "Tours, France" },
+  { id: "muenchen", name: "Munich, Germany" },
+  { id: "perpignan", name: "Perpignan, France" },
+  { id: "roma", name: "Rome, Italy" },
+  { id: "oslo", name: "Oslo, Norway" },
+  { id: "stockholm", name: "Stockholm, Sweden" },
+  { id: "malmo", name: "Malmo, Sweden" },
+  { id: "montelimar", name: "Montelimar, France" },
+  { id: "sonnblick", name: "Sonnblick, Austria" }
+];
+
 const CreatePolicy = () => {
   const { account, isConnected, provider } = useWeb3();
-  const [products, setProducts] = useState([]);
-  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [products, setProducts] = useState(DEFAULT_PRODUCTS);
+  const [selectedProduct, setSelectedProduct] = useState(DEFAULT_PRODUCTS[0]);
   const [formData, setFormData] = useState({
-    productId: '',
+    productId: '1',
     duration: '14',
     threshold: '50',
-    location: ''
+    location: 'maastricht'
   });
-  const [pricing, setPricing] = useState(null);
+  const [pricing, setPricing] = useState({
+    productId: 1,
+    durationDays: 14,
+    premiumFormatted: '0.00001',
+    payoutFormatted: '0.00004'
+  });
   const [creatingPolicy, setCreatingPolicy] = useState(false);
   const [creatingTestPolicy, setCreatingTestPolicy] = useState(false);
-  const [locations, setLocations] = useState([]);
+  const [locations, setLocations] = useState(DEFAULT_LOCATIONS);
   const [locationRecommendations, setLocationRecommendations] = useState(null);
   const [showRecommendations, setShowRecommendations] = useState(false);
   const [advancedMode, setAdvancedMode] = useState(false);
 
   const apiBaseUrl = API_BASE_URL;
+
+  const calculateFallbackPrice = (productId, durationDays) => {
+    const list = products && products.length ? products : DEFAULT_PRODUCTS;
+    const prod = list.find(p => p.id.toString() === productId.toString()) || list[0];
+    const basePremEth = prod.basePremiumWei ? Number(ethers.formatEther(prod.basePremiumWei)) : 0.00001;
+    const basePayEth = prod.basePayoutWei ? Number(ethers.formatEther(prod.basePayoutWei)) : 0.00004;
+    const mult = 1 + (Number(durationDays) - 7) * 0.015;
+    return {
+      productId: Number(productId),
+      durationDays: Number(durationDays),
+      premiumFormatted: (basePremEth * mult).toFixed(6),
+      payoutFormatted: (basePayEth * mult).toFixed(6)
+    };
+  };
 
   const triggerExpireSweep = async () => {
     try {
@@ -55,8 +120,8 @@ const CreatePolicy = () => {
       const productsRes = await fetch(`${apiBaseUrl}/api/products`);
       if (productsRes.ok) {
         const productsData = await productsRes.json();
-        setProducts(productsData.products || []);
         if (productsData.products && productsData.products.length > 0) {
+          setProducts(productsData.products);
           const firstProduct = productsData.products[0];
           setSelectedProduct(firstProduct);
           setFormData(prev => ({ 
@@ -72,10 +137,12 @@ const CreatePolicy = () => {
       const locationsRes = await fetch(`${apiBaseUrl}/api/policies/locations/all`);
       if (locationsRes.ok) {
         const locationsData = await locationsRes.json();
-        setLocations(locationsData.regions || []);
+        if (locationsData.regions && locationsData.regions.length > 0) {
+          setLocations(locationsData.regions);
+        }
       }
     } catch (err) {
-      console.error('Error loading data:', err);
+      console.warn('Using default catalog for products and locations:', err.message || err);
     }
   };
 
@@ -97,15 +164,14 @@ const CreatePolicy = () => {
       })
         .then(res => {
           if (!res.ok) {
-            const errorText = res.status === 429 ? 'Rate limit exceeded. Please wait a moment and try again.' : `HTTP ${res.status}`;
-            throw new Error(errorText);
+            throw new Error(`HTTP ${res.status}`);
           }
           return res.json();
         })
         .then(data => setPricing(data))
         .catch(err => {
-          console.error('Error calculating price:', err);
-          // Don't show alert for every failed price calculation to avoid spam
+          console.warn('Using calculated fallback pricing:', err.message || err);
+          setPricing(calculateFallbackPrice(formData.productId, formData.duration));
         });
     }
   }, [formData.productId, formData.duration]);

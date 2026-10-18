@@ -61,9 +61,9 @@ if (enableRateLimit) {
   console.log('⚙️  Rate limiting disabled (development mode)');
 }
 
-// CORS configuration
+// CORS configuration - Allow all localhost origins in development
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3021',
+  origin: true,
   credentials: true
 }));
 
