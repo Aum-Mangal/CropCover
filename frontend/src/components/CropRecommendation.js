@@ -121,13 +121,13 @@ const CropRecommendation = () => {
     }
   };
 
-  const getSuitabilityIcon = (suitability) => {
+  const getSuitabilityGrade = (suitability) => {
     switch (suitability) {
-      case 'excellent': return '⭐⭐⭐';
-      case 'good': return '⭐⭐';
-      case 'fair': return '⭐';
-      case 'poor': return '⚠️';
-      default: return '❓';
+      case 'excellent': return 'Grade A+';
+      case 'good': return 'Grade A';
+      case 'fair': return 'Grade B';
+      case 'poor': return 'Grade C';
+      default: return 'Standard';
     }
   };
 
@@ -178,8 +178,8 @@ const CropRecommendation = () => {
           </Stack>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
             {smartMode
-              ? '✨ Smart mode uses live weather data from the oracle to recommend crops'
-              : '📝 Manual mode uses your provided conditions to find suitable crops'}
+              ? 'Smart mode uses live weather data from the oracle to recommend crops'
+              : 'Manual mode uses your provided conditions to find suitable crops'}
           </Typography>
         </CardContent>
       </Card>
@@ -290,7 +290,7 @@ const CropRecommendation = () => {
         <Card>
           <CardContent>
             <Typography variant="h5" gutterBottom>
-              🌾 Recommended Crops
+              Recommended Crops
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
               Based on 22 crop types, analyzed with K-Nearest Neighbors algorithm
@@ -331,7 +331,7 @@ const CropRecommendation = () => {
                       </TableCell>
                       <TableCell>
                         <Chip
-                          label={`${getSuitabilityIcon(rec.suitability)} ${rec.suitability}`}
+                          label={`${getSuitabilityGrade(rec.suitability)} · ${rec.suitability}`}
                           color={getSuitabilityColor(rec.suitability)}
                           size="small"
                         />
@@ -378,7 +378,7 @@ const CropRecommendation = () => {
         maxWidth="sm"
         fullWidth
       >
-        <DialogTitle>🌾 All Available Crops (22 Types)</DialogTitle>
+        <DialogTitle>All Available Crops (22 Types)</DialogTitle>
         <DialogContent>
           <Typography variant="body2" color="text.secondary" gutterBottom>
             Select from these crops for recommendations:

@@ -76,7 +76,7 @@ const WeatherFeed = () => {
   if (loading) {
     return (
       <Container maxWidth="lg" sx={{ py: 3 }}>
-        <Typography variant="h6">🌤️ Live Weather Feed</Typography>
+        <Typography variant="h6">Live Weather Feed</Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>Loading weather data...</Typography>
       </Container>
     );
@@ -88,15 +88,15 @@ const WeatherFeed = () => {
   return (
     <Container maxWidth="lg" sx={{ py: 3 }}>
       <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
-        <Typography variant="h6" sx={{ m: 0 }}>🌤️ Live Weather Feed</Typography>
+        <Typography variant="h6" sx={{ m: 0 }}>Live Weather Feed</Typography>
         <Button variant="contained" size="small" onClick={() => { setLoading(true); fetchWeatherData(); }} disabled={loading}>
-          {loading ? '⏳ Refreshing...' : '🔄 Refresh Data'}
+          {loading ? 'Refreshing...' : 'Refresh Data'}
         </Button>
       </Stack>
 
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
-          ⚠️ Error loading weather data: {error}
+          Error loading weather data: {error}
         </Alert>
       )}
 
@@ -104,7 +104,7 @@ const WeatherFeed = () => {
         <Grid item xs={12} md={6}>
           <Card>
             <CardContent>
-              <Typography variant="subtitle1" sx={{ mb: 2 }}>📊 Latest Oracle Data</Typography>
+              <Typography variant="subtitle1" sx={{ mb: 2 }}>Latest Oracle Data</Typography>
               {latestRound ? (
                 <Grid container spacing={2}>
                   <Grid item xs={3}>
@@ -139,7 +139,7 @@ const WeatherFeed = () => {
         <Grid item xs={12} md={6}>
           <Card>
             <CardContent>
-              <Typography variant="subtitle1" sx={{ mb: 2 }}>🔮 Oracle Rounds</Typography>
+              <Typography variant="subtitle1" sx={{ mb: 2 }}>Oracle Rounds</Typography>
               <Grid container spacing={2}>
                 <Grid item xs={6}>
                   <Typography variant="caption" color="text.secondary">Total Rounds</Typography>
@@ -157,7 +157,7 @@ const WeatherFeed = () => {
 
       <Card sx={{ mb: 2 }}>
         <CardContent>
-          <Typography variant="subtitle1" sx={{ mb: 2 }}>📡 Recent Weather Samples</Typography>
+          <Typography variant="subtitle1" sx={{ mb: 2 }}>Recent Weather Samples</Typography>
           <Grid container spacing={2}>
             {recentTen.map((round) => (
               <Grid item xs={12} sm={6} md={4} key={round.roundId}>

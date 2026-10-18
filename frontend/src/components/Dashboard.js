@@ -162,14 +162,14 @@ const Dashboard = () => {
     <Container maxWidth="lg" sx={{ py: 3 }}>
       <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 3 }}>
         <Typography variant="h5" component="h2">
-          📊 Dashboard <Typography component="span" variant="caption" sx={{ ml: 1, color: 'text.secondary' }}>Build: {BUILD_ID}</Typography>
+          Dashboard <Typography component="span" variant="caption" sx={{ ml: 1, color: 'text.secondary' }}>Build: {BUILD_ID}</Typography>
         </Typography>
         {!isConnected ? (
           <Button variant="contained" onClick={connectWallet}>Connect MetaMask</Button>
         ) : (
           <Stack direction="row" spacing={2} alignItems="center">
             <Typography variant="body2">Connected: {account?.slice(0, 6)}...{account?.slice(-4)}</Typography>
-            <Button variant="outlined" onClick={() => { fetchPlatformStats(); fetchTreasuryLedger(); }}>🔄 Refresh</Button>
+            <Button variant="outlined" onClick={() => { fetchPlatformStats(); fetchTreasuryLedger(); }}>Refresh</Button>
           </Stack>
         )}
       </Stack>
@@ -206,7 +206,7 @@ const Dashboard = () => {
         <CardContent>
           <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" spacing={2} alignItems={{ xs: 'flex-start', sm: 'center' }}>
             <Box>
-              <Typography variant="subtitle1">💰 Treasury Balance</Typography>
+              <Typography variant="subtitle1">Treasury Balance</Typography>
               <Typography variant="h5" sx={{ mt: 0.5 }}>{treasuryLedger.balanceFormatted} ETH</Typography>
             </Box>
             <Stack direction="row" spacing={1}>
@@ -334,7 +334,7 @@ const Dashboard = () => {
         <Card>
           <CardContent>
             <Stack direction="row" alignItems="center" justifyContent="space-between">
-              <Typography variant="subtitle1">✅ Paid Out & Expired Policies</Typography>
+              <Typography variant="subtitle1">Settled & Expired Policies</Typography>
               <Button size="small" onClick={() => setShowFinalized(!showFinalized)}>
                 {showFinalized ? 'Hide' : 'Show'} ({stats.policies.filter(p => p.status !== 0 && p.statusString !== 'Active').length})
               </Button>

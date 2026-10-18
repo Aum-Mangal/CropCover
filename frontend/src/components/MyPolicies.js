@@ -220,7 +220,7 @@ const MyPolicies = () => {
   if (!isConnected) {
     return (
       <Container maxWidth="lg" sx={{ py: 3 }}>
-        <Typography variant="h5">📋 My Policies</Typography>
+        <Typography variant="h5">My Policies</Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>Please connect your wallet to view your policies.</Typography>
       </Container>
     );
@@ -309,7 +309,7 @@ const MyPolicies = () => {
           <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
             <Button size="small" variant="outlined" onClick={() => handleViewDetails(policy.policyId)}>View Details</Button>
             <Button size="small" variant="outlined" color="primary" onClick={() => handleViewCompositeIndex(policy.policyId)} disabled={compositeIndexLoading}>
-              📊 Composite Index
+              Composite Index
             </Button>
             {showFinalizeButton && isMyPolicy && (
               <Button
@@ -339,18 +339,18 @@ const MyPolicies = () => {
   return (
     <Container maxWidth="lg" sx={{ py: 3 }}>
       <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
-        <Typography variant="h5" sx={{ m: 0 }}>📋 My Policies</Typography>
+        <Typography variant="h5" sx={{ m: 0 }}>My Policies</Typography>
         <Stack direction="row" spacing={1}>
           <Button variant="outlined" onClick={() => { setRefreshKey(prev => prev + 1); refetch(); }}>Refresh</Button>
           <Button variant="contained" onClick={showAllPolicies ? () => setShowAllPolicies(false) : handleViewAllPolicies}>
-            {showAllPolicies ? '← Back to My Policies' : '🌐 View All Policies'}
+            {showAllPolicies ? 'Back to My Policies' : 'View All Policies'}
           </Button>
         </Stack>
       </Stack>
 
       {showAllPolicies ? (
         <Box>
-          <Typography variant="subtitle1" sx={{ mb: 2 }}>🌐 All Active Policies (All Accounts)</Typography>
+          <Typography variant="subtitle1" sx={{ mb: 2 }}>All Active Policies (All Accounts)</Typography>
           {allPoliciesLoading ? (
             <Typography variant="body2" color="text.secondary">Loading all policies...</Typography>
           ) : allPoliciesData && allPoliciesData.length > 0 ? (
@@ -397,7 +397,7 @@ const MyPolicies = () => {
       {/* Composite Index Dialog */}
       <Dialog open={showCompositeIndex} onClose={() => setShowCompositeIndex(false)} maxWidth="md" fullWidth>
         <DialogTitle>
-          📊 Composite Insurance Index - Policy #{compositeIndexData?.policyId}
+          Composite Insurance Index - Policy #{compositeIndexData?.policyId}
         </DialogTitle>
         <DialogContent>
           {compositeIndexLoading ? (
@@ -413,7 +413,7 @@ const MyPolicies = () => {
                 sx={{ mb: 3 }}
               >
                 <Typography variant="subtitle1" fontWeight="bold">
-                  {compositeIndexData.payoutDecision.shouldPayout ? '⚠️ PAYOUT TRIGGERED' : '✅ No Payout'}
+                  {compositeIndexData.payoutDecision.shouldPayout ? 'PAYOUT TRIGGERED' : 'No Payout Triggered'}
                 </Typography>
                 <Typography variant="body2">
                   Composite Index: <strong>{compositeIndexData.compositeIndex.compositeIndex}</strong> / Threshold: {compositeIndexData.policyThreshold}
@@ -448,7 +448,7 @@ const MyPolicies = () => {
                   <Grid item xs={12} sm={6} key={key}>
                     <Card variant="outlined" sx={{ p: 2 }}>
                       <Typography variant="caption" color="text.secondary" textTransform="uppercase">
-                        {key === 'rainfall' ? '🌧️ Rainfall' : key === 'temperature' ? '🌡️ Temperature' : key === 'soil' ? '🌱 Soil Moisture' : '💨 Wind Speed'}
+                        {key === 'rainfall' ? 'Rainfall' : key === 'temperature' ? 'Temperature' : key === 'soil' ? 'Soil Moisture' : 'Wind Speed'}
                       </Typography>
                       <Typography variant="h6">{data.value} {key === 'rainfall' ? 'mm' : key === 'temperature' ? '°C' : key === 'soil' ? '%' : 'm/s'}</Typography>
                       <Typography variant="caption" color="text.secondary">
@@ -466,7 +466,7 @@ const MyPolicies = () => {
               </Grid>
 
               {/* Current Weather */}
-              <Card variant="outlined" sx={{ mt: 3, p: 2, bgcolor: 'info.light' }}>
+              <Card variant="outlined" sx={{ mt: 3, p: 2, bgcolor: 'action.hover' }}>
                 <Typography variant="subtitle2" gutterBottom>Current Weather Conditions</Typography>
                 <Grid container spacing={2}>
                   <Grid item xs={6} sm={3}>
@@ -494,7 +494,7 @@ const MyPolicies = () => {
           <Button onClick={() => setShowCompositeIndex(false)}>Close</Button>
           {compositeIndexData && (
             <Button onClick={() => handleViewCompositeIndex(compositeIndexData.policyId)} variant="outlined">
-              🔄 Refresh
+              Refresh
             </Button>
           )}
         </DialogActions>

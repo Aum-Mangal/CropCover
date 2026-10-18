@@ -404,7 +404,7 @@ const CreatePolicy = () => {
 
   return (
     <div className="create-policy">
-      <h2>🌱 Create New Insurance Policy</h2>
+      <h2>Create New Insurance Policy</h2>
       
       {!isConnected ? (
         <div className="connect-prompt">
@@ -462,7 +462,7 @@ const CreatePolicy = () => {
           </div>
 
           <div className="form-group">
-            <label htmlFor="location">📍 Your Region</label>
+            <label htmlFor="location">Your Region</label>
             <select
               id="location"
               value={formData.location}
@@ -479,35 +479,35 @@ const CreatePolicy = () => {
           </div>
 
           {locationRecommendations && (
-            <div className="form-group" style={{ background: '#f0f7ff', padding: '15px', borderRadius: '8px', marginTop: '10px' }}>
+            <div className="form-group" style={{ background: '#0B0F19', border: '1px solid #1F2937', padding: '16px', borderRadius: '10px', marginTop: '12px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                <strong style={{ color: '#1976d2' }}>🎯 Recommended Thresholds</strong>
+                <strong style={{ color: '#10B981' }}>Recommended Thresholds (AI Model)</strong>
                 <button 
                   type="button" 
                   onClick={() => setShowRecommendations(!showRecommendations)}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#1976d2' }}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#10B981', fontSize: '13px', fontWeight: 600 }}
                 >
-                  {showRecommendations ? '▼' : '▶'}
+                  {showRecommendations ? 'Hide Details' : 'View Details'}
                 </button>
               </div>
               {showRecommendations && (
-                <div style={{ marginTop: '10px' }}>
+                <div style={{ marginTop: '10px', color: '#9CA3AF' }}>
                   <div style={{ marginBottom: '8px' }}>
-                    <strong>Ideal:</strong> {locationRecommendations.recommendations.ideal}mm
+                    <strong style={{ color: '#F9FAFB' }}>Ideal:</strong> {locationRecommendations.recommendations.ideal}mm
                     <br />
-                    <small style={{ color: '#666' }}>{locationRecommendations.explanation.ideal}</small>
+                    <small style={{ color: '#9CA3AF' }}>{locationRecommendations.explanation.ideal}</small>
                   </div>
                   <div style={{ marginBottom: '8px' }}>
-                    <strong>Conservative:</strong> {locationRecommendations.recommendations.conservative}mm
+                    <strong style={{ color: '#F9FAFB' }}>Conservative:</strong> {locationRecommendations.recommendations.conservative}mm
                     <br />
-                    <small style={{ color: '#666' }}>{locationRecommendations.explanation.conservative}</small>
+                    <small style={{ color: '#9CA3AF' }}>{locationRecommendations.explanation.conservative}</small>
                   </div>
                   <div>
-                    <strong>Aggressive:</strong> {locationRecommendations.recommendations.aggressive}mm
+                    <strong style={{ color: '#F9FAFB' }}>Aggressive:</strong> {locationRecommendations.recommendations.aggressive}mm
                     <br />
-                    <small style={{ color: '#666' }}>{locationRecommendations.explanation.aggressive}</small>
+                    <small style={{ color: '#9CA3AF' }}>{locationRecommendations.explanation.aggressive}</small>
                   </div>
-                  <div style={{ marginTop: '10px', padding: '8px', background: '#fff', borderRadius: '4px' }}>
+                  <div style={{ marginTop: '10px', padding: '10px', background: '#111827', border: '1px solid #1F2937', borderRadius: '6px' }}>
                     <strong>Risk Level:</strong> {locationRecommendations.analysis.riskLevel} | 
                     <strong> Confidence:</strong> {locationRecommendations.analysis.confidence}
                   </div>
@@ -567,7 +567,7 @@ const CreatePolicy = () => {
                   (locationRecommendations.recommendations.ideal < selectedProduct.minThreshold || 
                    locationRecommendations.recommendations.ideal > selectedProduct.maxThreshold) && (
                     <div style={{ marginTop: '5px', color: '#ff9800', fontSize: '11px' }}>
-                      ⚠️ Ideal threshold ({locationRecommendations.recommendations.ideal}mm) is outside product range ({selectedProduct.minThreshold}-{selectedProduct.maxThreshold}mm). Will be adjusted.
+                      Notice: Ideal threshold ({locationRecommendations.recommendations.ideal}mm) is outside product range ({selectedProduct.minThreshold}-{selectedProduct.maxThreshold}mm). Will be adjusted.
                     </div>
                   )
                 )}

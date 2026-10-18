@@ -138,7 +138,7 @@ const OracleReputation = () => {
     <Box sx={{ flexGrow: 1, p: 3 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
         <Typography variant="h4" component="h2">
-          🔐 Oracle Reputation (Dataset Insights)
+          Oracle Reputation (Dataset Insights)
         </Typography>
         <Button
           variant="contained"
