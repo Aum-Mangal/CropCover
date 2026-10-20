@@ -187,26 +187,32 @@ class LocationWeatherService {
     const stationStats = await datasetWeatherService.getStationStats();
     const stationInfo = stationStats.find(node => node.nodeId === region.id);
 
-    const toMillimetres = (value) => (typeof value === 'number' ? value * 10 : null);
+    const toMillimetres = (value) => (typeof value === 'number' ? value : null);
 
     const rainfallSamples = stationStats
       .map(node => toMillimetres(node.averages?.rainfallMm))
       .filter(value => typeof value === 'number');
     const overallAverage = rainfallSamples.length
       ? rainfallSamples.reduce((sum, value) => sum + value, 0) / rainfallSamples.length
-      : 60;
+      : 3.5;
 
-    const avgRainfall = toMillimetres(stationInfo?.averages?.rainfallMm) ?? overallAverage;
-    const variability = toMillimetres(stationInfo?.averageDeviationMm) ?? 10;
+    // Daily rainfall in mm
+    const avgDailyRainfall = toMillimetres(stationInfo?.averages?.rainfallMm) ?? overallAverage;
+    const dailyVariability = toMillimetres(stationInfo?.averageDeviationMm) ?? 1.2;
     const accuracy = stationInfo?.accuracy ?? 50;
 
     const duration = Math.max(1, durationDays || 14);
-    const expectedRainfall = avgRainfall * duration;
-    const expectedVariability = variability * Math.sqrt(duration);
+    
+    // Scale baseline recommended thresholds by duration factor (standardized around 14 days)
+    const durationFactor = duration / 14;
+    const baseRecs = region.recommendedThresholds || { ideal: 50, conservative: 65, aggressive: 38 };
+    
+    const idealThreshold = Math.max(10, Math.min(95, Math.round(baseRecs.ideal * Math.pow(durationFactor, 0.7))));
+    const conservativeThreshold = Math.max(idealThreshold + 5, Math.min(100, Math.round(baseRecs.conservative * Math.pow(durationFactor, 0.7))));
+    const aggressiveThreshold = Math.max(5, Math.round(baseRecs.aggressive * Math.pow(durationFactor, 0.7)));
 
-    const idealThreshold = Math.max(1, Math.round(expectedRainfall));
-    const conservativeThreshold = Math.max(idealThreshold + Math.round(expectedVariability), Math.round(expectedRainfall * 1.2));
-    const aggressiveThreshold = Math.max(1, Math.round(expectedRainfall * 0.75));
+    const expectedRainfall = avgDailyRainfall * duration;
+    const expectedVariability = dailyVariability * Math.sqrt(duration);
 
     const recommendations = {
       ideal: idealThreshold,
