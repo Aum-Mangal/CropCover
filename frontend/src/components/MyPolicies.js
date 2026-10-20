@@ -281,7 +281,7 @@ const MyPolicies = () => {
             <Grid item xs={6} md={3}>
               <Typography variant="caption" color="text.secondary">Duration</Typography>
               {isShortPolicy ? (
-                <Typography variant="body2">60 sec test policy</Typography>
+                <Typography variant="body2">{policy.endTs && policy.startTs ? `${policy.endTs - policy.startTs} sec test policy` : '15 sec test policy'}</Typography>
               ) : (
                 <Typography variant="body2">{policy.startTs && policy.endTs ? Math.floor((policy.endTs - policy.startTs) / 86400) : 'N/A'} days</Typography>
               )}

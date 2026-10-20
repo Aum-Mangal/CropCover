@@ -440,29 +440,29 @@ const CreatePolicy = () => {
 
     await policyFactory.createTestPolicy.staticCall(
       parseInt(formData.productId),
-      60,
+      15,
       threshold,
       { value: premiumWei }
     );
 
     const tx = await policyFactory.createTestPolicy(
       parseInt(formData.productId),
-      60,
+      15,
       threshold,
       { value: premiumWei }
     );
 
     const receipt = await tx.wait();
-    console.log('60s test policy created:', receipt);
+    console.log('15s test policy created:', receipt);
 
     await new Promise(resolve => setTimeout(resolve, 2000));
 
     window.dispatchEvent(new CustomEvent('policyCreated', { detail: { policyId: receipt.logs?.[0]?.topics?.[3] } }));
 
-    alert(`60-second test policy created! Transaction: ${receipt.hash}\n\nThe policy will start in a few seconds and expire one minute later.`);
+    alert(`15-second test policy created! Transaction: ${receipt.hash}\n\nThe policy is now active and runs for 15 seconds.`);
   } catch (error) {
     console.error('Error creating test policy:', error);
-    alert('Failed to create 60-second policy: ' + (error?.message || 'Unknown error'));
+    alert('Failed to create 15-second policy: ' + (error?.message || 'Unknown error'));
   } finally {
     setCreatingTestPolicy(false);
   }
@@ -685,7 +685,7 @@ const CreatePolicy = () => {
             style={{ marginTop: '10px', background: '#2196F3' }}
             onClick={handleCreateTestPolicy}
           >
-            {creatingTestPolicy ? 'Creating 60s Policy...' : 'Create 60s Test Policy'}
+            {creatingTestPolicy ? 'Creating 15s Policy...' : 'Create 15s Test Policy'}
           </button>
         </form>
         </>
