@@ -171,15 +171,16 @@ const MyPolicies = () => {
     }
     try {
       const network = await provider.getNetwork();
-      if (network.chainId !== 1337n) {
-        alert(`❌ Wrong Network!\nYou're connected to Chain ID: ${network.chainId}\nSwitch MetaMask to \"Localhost 8545\" (Chain ID: 1337)`);
+      const cid = Number(network.chainId);
+      if (cid !== 31337 && cid !== 1337) {
+        alert(`Wrong Network!\nYou're connected to Chain ID: ${cid}\nPlease switch MetaMask to Localhost 8545 (Chain ID: 31337).`);
         return;
       }
     } catch (err) {
-      console.error('Network check error:', err);
+      console.warn('Network check warning:', err);
     }
     if (policy.status === 1 || policy.statusString === 'PaidOut') {
-      alert('✅ This policy has already been paid out!');
+      alert('This policy has already been paid out to your wallet!');
       return;
     }
     if (policy.status === 2 || policy.statusString === 'Expired') {
