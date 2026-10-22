@@ -197,7 +197,7 @@ const MyPolicies = () => {
       const policyFactory = new ethers.Contract(contracts.PolicyFactory, [
         'function finalize(uint256 policyId)'
       ], signer);
-      const tx = await policyFactory.finalize(policy.policyId);
+      const tx = await policyFactory.finalize(policy.policyId, { gasLimit: 500000 });
       alert(`Transaction submitted: ${tx.hash}`);
       const receipt = await tx.wait();
       alert(`✅ Policy finalized!\nTx: ${receipt.hash}`);

@@ -301,14 +301,14 @@ const CreatePolicy = () => {
       parseInt(formData.productId),
       durationDays,
       threshold,
-      { value: premiumWei }
+      { value: premiumWei, gasLimit: 500000 }
     );
 
     const tx = await policyFactory.createPolicy(
       parseInt(formData.productId),
       durationDays,
       threshold,
-      { value: premiumWei }
+      { value: premiumWei, gasLimit: 500000 }
     );
 
     console.log('Creating policy with:', {
@@ -442,14 +442,14 @@ const CreatePolicy = () => {
       parseInt(formData.productId),
       15,
       threshold,
-      { value: premiumWei }
+      { value: premiumWei, gasLimit: 500000 }
     );
 
     const tx = await policyFactory.createTestPolicy(
       parseInt(formData.productId),
       15,
       threshold,
-      { value: premiumWei }
+      { value: premiumWei, gasLimit: 500000 }
     );
 
     const receipt = await tx.wait();
